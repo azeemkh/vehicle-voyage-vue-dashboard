@@ -1,84 +1,97 @@
-import React, { useEffect, useState } from 'react';
-import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, Polyline } from 'react-leaflet';
-import { LatLngBounds } from 'leaflet';
+import React from 'react';
 import { Vehicle } from '@/data/mockVehicles';
-import VehicleMarker from './VehicleMarker';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { X, MapPin, Clock, Route, Gauge } from 'lucide-react';
+import { MapPin, Clock, Route, Gauge, Eye } from 'lucide-react';
 import { calculateDistance, calculateAverageSpeed, formatTimeAgo } from '@/data/mockVehicles';
 
-interface VehicleMapProps {
+interface SimpleVehicleMapProps {
   vehicles: Vehicle[];
   selectedVehicle?: Vehicle;
   onVehicleSelect: (vehicle: Vehicle | undefined) => void;
 }
 
-const VehicleMap: React.FC<VehicleMapProps> = ({ 
+const SimpleVehicleMap: React.FC<SimpleVehicleMapProps> = ({ 
   vehicles, 
   selectedVehicle, 
   onVehicleSelect 
 }) => {
-  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
-
-  useEffect(() => {
-    if (vehicles.length > 0) {
-      const bounds = new LatLngBounds(
-        vehicles.map(vehicle => [vehicle.location.lat, vehicle.location.lng])
-      );
-      setMapBounds(bounds);
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'online': return 'bg-green-500';
+      case 'offline': return 'bg-gray-400';
+      case 'alert': return 'bg-red-500';
+      default: return 'bg-gray-400';
     }
-  }, [vehicles]);
-
-  const handleViewHistory = (vehicle: Vehicle) => {
-    onVehicleSelect(vehicle);
   };
 
-  const getRouteColor = () => '#3b82f6';
-
-  const routePositions = selectedVehicle?.history?.map(point => [point.lat, point.lng]) as [number, number][] | undefined;
-
   return (
-    <div className="relative h-full w-full">
-      {mapBounds ? (
-        <MapContainer
-          bounds={mapBounds}
-          className="h-full w-full rounded-lg"
-          zoomControl={true}
-          scrollWheelZoom={true}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+    <div className="relative h-full w-full bg-muted/20 rounded-lg overflow-hidden">
+      {/* Map Placeholder */}
+      <div className="absolute inset-0 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/20 dark:to-blue-800/20">
+        <div className="h-full w-full relative">
+          {/* Grid pattern to simulate map */}
+          <div 
+            className="absolute inset-0 opacity-10"
+            style={{
+              backgroundImage: `
+                linear-gradient(rgba(0,0,0,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,0,0,0.1) 1px, transparent 1px)
+              `,
+              backgroundSize: '50px 50px'
+            }}
           />
           
-          {vehicles.map(vehicle => (
-            <VehicleMarker
+          {/* Vehicle markers */}
+          {vehicles.map((vehicle, index) => (
+            <div
               key={vehicle.id}
-              vehicle={vehicle}
-              onViewHistory={handleViewHistory}
-            />
+              className="absolute transform -translate-x-1/2 -translate-y-1/2 cursor-pointer group"
+              style={{
+                left: `${20 + (index % 5) * 15}%`,
+                top: `${20 + Math.floor(index / 5) * 20}%`,
+              }}
+              onClick={() => onVehicleSelect(vehicle)}
+            >
+              {/* Vehicle marker */}
+              <div className={`w-4 h-4 rounded-full border-2 border-white shadow-lg ${getStatusColor(vehicle.status)} group-hover:scale-125 transition-transform`}>
+                {vehicle.status === 'online' && (
+                  <div className={`absolute inset-0 rounded-full ${getStatusColor(vehicle.status)} animate-ping opacity-30`} />
+                )}
+              </div>
+              
+              {/* Vehicle info on hover */}
+              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-background border rounded-lg shadow-lg p-2 min-w-32 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                <div className="text-xs font-medium">{vehicle.name}</div>
+                <div className="text-xs text-muted-foreground">{vehicle.plate}</div>
+                <Badge variant={vehicle.status === 'online' ? 'default' : 'secondary'} className="text-xs">
+                  {vehicle.status}
+                </Badge>
+              </div>
+            </div>
           ))}
-
-          {selectedVehicle && routePositions && routePositions.length > 1 && (
-            <Polyline
-              positions={routePositions}
-              color={getRouteColor()}
-              weight={4}
-              opacity={0.8}
-            />
+          
+          {/* Route line for selected vehicle */}
+          {selectedVehicle && (
+            <svg className="absolute inset-0 w-full h-full pointer-events-none">
+              <path
+                d="M 20% 20% Q 40% 60% 60% 40% T 80% 80%"
+                stroke="#3b82f6"
+                strokeWidth="3"
+                fill="none"
+                strokeDasharray="5,5"
+                className="animate-pulse"
+              />
+            </svg>
           )}
-        </MapContainer>
-      ) : (
-        <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center map-skeleton">
-          <div className="text-center">
-            <MapPin className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Loading map...</p>
-          </div>
         </div>
-      )}
+        
+        {/* Map watermark */}
+        <div className="absolute bottom-4 left-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
+          Simplified Map View
+        </div>
+      </div>
 
       {/* Route History Overlay */}
       {selectedVehicle && (
@@ -91,7 +104,7 @@ const VehicleMap: React.FC<VehicleMapProps> = ({
                 size="sm"
                 onClick={() => onVehicleSelect(undefined)}
               >
-                <X className="w-4 h-4" />
+                ×
               </Button>
             </div>
 
@@ -167,4 +180,4 @@ const VehicleMap: React.FC<VehicleMapProps> = ({
   );
 };
 
-export default VehicleMap;
+export default SimpleVehicleMap;
