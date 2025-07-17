@@ -23,7 +23,7 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
-  const { collapsed } = useSidebar();
+  const { state } = useSidebar();
   const location = useLocation();
   const currentPath = location.pathname;
 
@@ -32,15 +32,15 @@ export function AppSidebar() {
     isActive ? 'bg-primary text-primary-foreground font-medium' : 'hover:bg-muted/50';
 
   return (
-    <Sidebar className={collapsed ? 'w-14' : 'w-60'} collapsible>
+    <Sidebar className={state === 'collapsed' ? 'w-14' : 'w-60'} collapsible="icon">
       <div className="flex items-center gap-2 p-4 border-b">
-        {!collapsed && (
+        {state === 'expanded' && (
           <>
             <Activity className="w-6 h-6 text-primary" />
             <span className="font-semibold text-lg">VehicleTracker</span>
           </>
         )}
-        {collapsed && <Activity className="w-6 h-6 text-primary" />}
+        {state === 'collapsed' && <Activity className="w-6 h-6 text-primary" />}
       </div>
 
       <SidebarContent>
@@ -53,7 +53,7 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild>
                     <NavLink to={item.url} end className={getNavClass}>
                       <item.icon className="w-4 h-4" />
-                      {!collapsed && <span>{item.title}</span>}
+                      {state === 'expanded' && <span>{item.title}</span>}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
