@@ -1,5 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
+import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Polyline } from 'react-leaflet';
 import { LatLngBounds } from 'leaflet';
 import { Vehicle } from '@/data/mockVehicles';
@@ -9,7 +10,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { X, MapPin, Clock, Route, Gauge } from 'lucide-react';
 import { calculateDistance, calculateAverageSpeed, formatTimeAgo } from '@/data/mockVehicles';
-import 'leaflet/dist/leaflet.css';
 
 interface VehicleMapProps {
   vehicles: Vehicle[];
@@ -55,7 +55,6 @@ const VehicleMap: React.FC<VehicleMapProps> = ({
             url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {/* Vehicle markers */}
           {vehicles.map(vehicle => (
             <VehicleMarker
               key={vehicle.id}
@@ -64,8 +63,7 @@ const VehicleMap: React.FC<VehicleMapProps> = ({
             />
           ))}
 
-          {/* Route history polyline */}
-          {selectedVehicle && routePositions.length > 1 && (
+          {selectedVehicle && routePositions && routePositions.length > 1 && (
             <Polyline
               positions={routePositions}
               color={getRouteColor()}
