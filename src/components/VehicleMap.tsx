@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { MapContainer, TileLayer, Polyline } from 'react-leaflet';
-import 'leaflet/dist/leaflet.css';
-import { LatLngBounds } from 'leaflet';
+import React, { useEffect, useRef, useState } from 'react';
+import mapboxgl from 'mapbox-gl';
+import 'mapbox-gl/dist/mapbox-gl.css';
 import { Vehicle } from '@/data/mockVehicles';
-import VehicleMarker from './VehicleMarker';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { X, MapPin, Clock, Route, Gauge } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { X, MapPin, Clock, Route, Gauge, Settings } from 'lucide-react';
 import { calculateDistance, calculateAverageSpeed, formatTimeAgo } from '@/data/mockVehicles';
 
 interface VehicleMapProps {
@@ -21,71 +20,148 @@ const VehicleMap: React.FC<VehicleMapProps> = ({
   selectedVehicle, 
   onVehicleSelect 
 }) => {
-  const [mapBounds, setMapBounds] = useState<LatLngBounds | null>(null);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const map = useRef<mapboxgl.Map | null>(null);
+  const markers = useRef<mapboxgl.Marker[]>([]);
+  const [mapboxToken, setMapboxToken] = useState('');
+  const [isTokenSet, setIsTokenSet] = useState(false);
 
+  // Initialize map when token is set
   useEffect(() => {
-    if (vehicles.length > 0) {
-      const bounds = new LatLngBounds(
-        vehicles.map(vehicle => [vehicle.location.lat, vehicle.location.lng])
-      );
-      setMapBounds(bounds);
-    }
-  }, [vehicles]);
+    if (!mapContainer.current || !mapboxToken) return;
 
-  const handleViewHistory = (vehicle: Vehicle) => {
-    onVehicleSelect(vehicle);
+    // Set Mapbox access token
+    mapboxgl.accessToken = mapboxToken;
+    
+    try {
+      // Initialize map
+      map.current = new mapboxgl.Map({
+        container: mapContainer.current,
+        style: 'mapbox://styles/mapbox/streets-v12',
+        center: [55.2708, 25.2048], // Dubai coordinates
+        zoom: 10,
+      });
+
+      // Add navigation controls
+      map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
+
+      setIsTokenSet(true);
+
+      return () => {
+        if (map.current) {
+          map.current.remove();
+          map.current = null;
+        }
+      };
+    } catch (error) {
+      console.error('Error initializing Mapbox:', error);
+    }
+  }, [mapboxToken]);
+
+  // Update markers when vehicles change
+  useEffect(() => {
+    if (!map.current || !isTokenSet) return;
+
+    // Clear existing markers
+    markers.current.forEach(marker => marker.remove());
+    markers.current = [];
+
+    // Add new markers
+    vehicles.forEach(vehicle => {
+      const el = document.createElement('div');
+      el.className = 'vehicle-marker';
+      el.style.cssText = `
+        width: 20px;
+        height: 20px;
+        border-radius: 50%;
+        border: 2px solid white;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+        background-color: ${
+          vehicle.status === 'online' ? '#10b981' : 
+          vehicle.status === 'alert' ? '#ef4444' : '#6b7280'
+        };
+      `;
+
+      const marker = new mapboxgl.Marker(el)
+        .setLngLat([vehicle.location.lng, vehicle.location.lat])
+        .addTo(map.current!);
+
+      // Add popup
+      const popup = new mapboxgl.Popup({ offset: 25 })
+        .setHTML(`
+          <div class="p-2">
+            <h3 class="font-semibold">${vehicle.name}</h3>
+            <p class="text-sm text-gray-600">${vehicle.plate}</p>
+            <p class="text-sm">Status: ${vehicle.status}</p>
+            <p class="text-sm">Speed: ${vehicle.speed} km/h</p>
+          </div>
+        `);
+
+      marker.setPopup(popup);
+
+      // Handle marker click
+      el.addEventListener('click', () => {
+        onVehicleSelect(vehicle);
+      });
+
+      markers.current.push(marker);
+    });
+  }, [vehicles, isTokenSet, onVehicleSelect]);
+
+  const handleTokenSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const formData = new FormData(e.target as HTMLFormElement);
+    const token = formData.get('token') as string;
+    setMapboxToken(token);
   };
 
-  const getRouteColor = () => '#3b82f6';
-
-  const routePositions = selectedVehicle?.history?.map(point => [point.lat, point.lng]) as [number, number][] | undefined;
+  if (!isTokenSet) {
+    return (
+      <div className="h-full w-full flex items-center justify-center bg-muted/20 rounded-lg">
+        <Card className="w-96 p-6">
+          <div className="text-center mb-4">
+            <Settings className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+            <h3 className="text-lg font-semibold mb-2">Configure Mapbox</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Enter your Mapbox public token to display the interactive map.
+              Get your token from{' '}
+              <a 
+                href="https://mapbox.com/" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-primary underline"
+              >
+                mapbox.com
+              </a>
+            </p>
+          </div>
+          
+          <form onSubmit={handleTokenSubmit} className="space-y-4">
+            <Input
+              name="token"
+              placeholder="pk.eyJ1IjoieW91ci11c2VybmFtZSIsImEiOiJjbGJ..."
+              required
+            />
+            <Button type="submit" className="w-full">
+              Initialize Map
+            </Button>
+          </form>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="relative h-full w-full">
-      {mapBounds ? (
-        <MapContainer
-          bounds={mapBounds}
-          className="h-full w-full rounded-lg"
-          zoomControl={true}
-          scrollWheelZoom={true}
-        >
-          <TileLayer
-            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          />
-          
-          {vehicles.map(vehicle => (
-            <VehicleMarker
-              key={vehicle.id}
-              vehicle={vehicle}
-              onViewHistory={handleViewHistory}
-            />
-          ))}
-
-          {selectedVehicle && routePositions && routePositions.length > 1 && (
-            <Polyline
-              positions={routePositions}
-              color={getRouteColor()}
-              weight={4}
-              opacity={0.8}
-            />
-          )}
-        </MapContainer>
-      ) : (
-        <div className="h-full w-full bg-muted rounded-lg flex items-center justify-center map-skeleton">
-          <div className="text-center">
-            <MapPin className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground">Loading map...</p>
-          </div>
-        </div>
-      )}
+      <div ref={mapContainer} className="h-full w-full rounded-lg" />
 
       {/* Route History Overlay */}
       {selectedVehicle && (
         <Card className="absolute top-4 right-4 w-80 max-h-96 overflow-y-auto z-[1000] shadow-lg">
           <div className="p-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-lg">Route History</h3>
+              <h3 className="font-semibold text-lg">Vehicle Details</h3>
               <Button
                 variant="ghost"
                 size="sm"
