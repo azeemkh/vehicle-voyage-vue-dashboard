@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Polyline } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import { LatLngBounds } from 'leaflet';
 import { Vehicle } from '@/data/mockVehicles';
 import VehicleMarker from './VehicleMarker';

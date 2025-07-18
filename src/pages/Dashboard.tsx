@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import SimpleVehicleMap from '@/components/SimpleVehicleMap';
+import VehicleMap from '@/components/VehicleMap';
 import VehicleList from '@/components/VehicleList';
 import DashboardStats from '@/components/DashboardStats';
 import { Map, List, BarChart3, RefreshCw, Wifi, WifiOff } from 'lucide-react';
@@ -126,7 +126,7 @@ const Dashboard: React.FC = () => {
           <div className="flex-1 mt-4">
             <TabsContent value="map" className="h-full m-0">
               <Card className="h-full">
-                <SimpleVehicleMap
+                <VehicleMap
                   vehicles={vehicles}
                   selectedVehicle={selectedVehicle}
                   onVehicleSelect={handleVehicleSelect}
